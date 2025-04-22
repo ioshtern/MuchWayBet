@@ -23,3 +23,12 @@ go.work.sum
 
 # env file
 .env
+# --- IDE project files ---
+.idea/*
+!.idea/codeStyles
+!.idea/runConfigurations
+!.idea/modules.xml
+!.idea/vcs.xml
+*.iws
+*.iml
+*.ipr
