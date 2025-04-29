@@ -1,8 +1,11 @@
 package usecase
 
 import (
+	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 	"muchway/user_service/domain"
+	"muchway/user_service/rabbitmq"
 	"muchway/user_service/repository"
 )
 
@@ -14,11 +17,12 @@ type UserUsecase interface {
 }
 
 type userUsecase struct {
-	repo repository.UserRepository
+	repo      repository.UserRepository
+	publisher *rabbitmq.Publisher
 }
 
-func NewUserUsecase(repo repository.UserRepository) UserUsecase {
-	return &userUsecase{repo: repo}
+func NewUserUsecase(repo repository.UserRepository, publisher *rabbitmq.Publisher) UserUsecase {
+	return &userUsecase{repo: repo, publisher: publisher}
 }
 
 func (u *userUsecase) Register(user *domain.User) error {
@@ -27,7 +31,28 @@ func (u *userUsecase) Register(user *domain.User) error {
 		return err
 	}
 	user.Password = string(hashedPassword)
-	return u.repo.Create(user)
+
+	if err := u.repo.Create(user); err != nil {
+		return err
+	}
+
+	if u.publisher != nil {
+		err := u.publisher.Publish(map[string]interface{}{
+			"event": "UserCreated",
+			"data": map[string]interface{}{
+				"id":       user.ID,
+				"username": user.Username,
+				"email":    user.Email,
+				"balance":  user.Balance,
+				"role":     user.Role,
+			},
+		})
+		if err != nil {
+			log.Println("Failed to publish UserCreated event:", err)
+		}
+	}
+
+	return nil
 }
 
 func (u *userUsecase) Login(email, password string) (*domain.User, error) {
@@ -38,6 +63,12 @@ func (u *userUsecase) Login(email, password string) (*domain.User, error) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, err
 	}
+
+	event := fmt.Sprintf("User logged in: ID=%d, Email=%s", user.ID, user.Email)
+	if err := u.publisher.Publish([]byte(event)); err != nil {
+		log.Printf("Failed to publish login event: %v", err)
+	}
+
 	return user, nil
 }
 

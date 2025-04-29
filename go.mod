@@ -10,8 +10,11 @@ require (
 
 require (
 	github.com/lib/pq v1.10.9 // indirect
+	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
+	github.com/streadway/amqp v1.1.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1 // indirect
 )

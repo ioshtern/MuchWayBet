@@ -7,6 +7,7 @@ import (
 	"log"
 	grpcServer "muchway/user_service/grpc"
 	pb "muchway/user_service/proto/userpb"
+	"muchway/user_service/rabbitmq"
 	"muchway/user_service/repository/postgres"
 	"muchway/user_service/usecase"
 	_ "muchway/user_service/usecase"
@@ -22,10 +23,26 @@ func main() {
 	}
 
 	userRepo := postgres.NewPostgresUserRepository(db)
-	userUsecase := usecase.NewUserUsecase(userRepo)
+
+	publisher, err := rabbitmq.NewPublisher("amqp://guest:guest@localhost:5672/", "user_events")
+	if err != nil {
+		log.Fatal("Failed to connect to RabbitMQ:", err)
+	}
+	defer publisher.Close()
+
+	userUsecase := usecase.NewUserUsecase(userRepo, publisher)
+
+	go func() {
+		err := rabbitmq.StartConsumer("amqp://guest:guest@localhost:5672/", "user_events")
+		if err != nil {
+			log.Fatalf("Failed to start RabbitMQ consumer: %v", err)
+		}
+	}()
+
 	server := grpc.NewServer()
 	pb.RegisterUserServiceServer(server, grpcServer.NewUserServer(userUsecase))
 	reflection.Register(server)
+
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

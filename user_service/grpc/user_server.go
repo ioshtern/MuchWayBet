@@ -45,6 +45,26 @@ func (s *UserServer) CreateUser(ctx context.Context, req *userpb.CreateUserReque
 		},
 	}, nil
 }
+func (s *UserServer) Login(ctx context.Context, req *userpb.LoginRequest) (*userpb.LoginResponse, error) {
+	email := req.GetEmail()
+	password := req.GetPassword()
+
+	user, err := s.usecase.Login(email, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userpb.LoginResponse{
+		User: &userpb.User{
+			Id:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+			Password: user.Password,
+			Balance:  user.Balance,
+			Role:     user.Role,
+		},
+	}, nil
+}
 
 func (s *UserServer) GetUserByID(ctx context.Context, req *userpb.GetUserByIDRequest) (*userpb.GetUserByIDResponse, error) {
 	user, err := s.usecase.GetUserByID(req.GetId())
