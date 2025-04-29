@@ -1,5 +1,4 @@
 # MuchWayBet
 
-# Ermek Gay
 
 
