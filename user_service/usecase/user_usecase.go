@@ -1,9 +1,10 @@
 package usecase
 
 import (
-	"golang.org/x/crypto/bcrypt"
 	"muchway/user_service/domain"
 	"muchway/user_service/repository"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserUsecase interface {

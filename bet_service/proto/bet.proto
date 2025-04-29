@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package bet;
+
+option go_package = "proto";
+
+message Bet {
+    string id = 1;
+    string user_id = 2;
+    string event_id = 3;
+    double amount = 4;
+    double odds = 5;
+    string status = 6;
+    double payout = 7;
+}
+
+message CreateBetRequest {
+    Bet bet = 1;
+}
+
+message CreateBetResponse {
+    Bet bet = 1;
+}
+
+message GetBetByIDRequest {
+    string id = 1;
+}
+
+message GetBetByIDResponse {
+    Bet bet = 1;
+}
+
+message GetBetsByUserIDRequest {
+    string user_id = 1;
+}
+
+message GetBetsByUserIDResponse {
+    repeated Bet bets = 1;
+}
+
+message UpdateBetRequest {
+    Bet bet = 1;
+}
+
+message UpdateBetResponse {
+    Bet bet = 1;
+}
+
+message DeleteBetRequest {
+    string id = 1;
+}
+
+message DeleteBetResponse {
+    bool success = 1;
+}
+
+service BetService {
+    rpc CreateBet(CreateBetRequest) returns (CreateBetResponse);
+    rpc GetBetByID(GetBetByIDRequest) returns (GetBetByIDResponse);
+    rpc GetBetsByUserID(GetBetsByUserIDRequest) returns (GetBetsByUserIDResponse);
+    rpc UpdateBet(UpdateBetRequest) returns (UpdateBetResponse);
+    rpc DeleteBet(DeleteBetRequest) returns (DeleteBetResponse);
+}
