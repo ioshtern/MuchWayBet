@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package event;
+import "google/protobuf/timestamp.proto";
+option go_package = "muchway/event_service/proto;proto";
+
+message Event {
+  string id        = 1;
+  string name      = 2;
+  string start_time = 3;
+  string status    = 4;
+  string winner_id = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message CreateEventRequest { Event event = 1; }
+message CreateEventResponse { Event event = 1; }
+
+message GetEventRequest { string id = 1; }
+message GetEventResponse { Event event = 1; }
+
+message UpdateEventRequest { Event event = 1; }
+message UpdateEventResponse { Event event = 1; }
+
+message DeleteEventRequest { string id = 1; }
+message DeleteEventResponse {}
+
+message ListEventsRequest {}
+message ListEventsResponse { repeated Event events = 1; }
+
+service EventService {
+  rpc CreateEvent(CreateEventRequest)   returns (CreateEventResponse);
+  rpc GetEvent(GetEventRequest)         returns (GetEventResponse);
+  rpc UpdateEvent(UpdateEventRequest)   returns (UpdateEventResponse);
+  rpc DeleteEvent(DeleteEventRequest)   returns (DeleteEventResponse);
+  rpc ListEvents(ListEventsRequest)     returns (ListEventsResponse);
+}
