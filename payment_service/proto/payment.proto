@@ -1,0 +1,30 @@
+syntax = "proto3";
+package pb;
+
+option go_package = "/pb";
+
+message PaymentResponse {
+  string id = 1;
+  string user_id = 2;
+  string type = 3;
+  double amount = 4;
+  string status = 5;
+  int64 created_at = 6;
+  int64 updated_at = 7;
+}
+message CreatePaymentRequest {
+  string user_id = 1;
+  string type = 2;
+  double amount = 3;
+}
+message GetPaymentRequest { string id = 1; }
+message DeletePaymentRequest { string id = 1; }
+message Empty {}
+message PaymentsResponse { repeated PaymentResponse payments = 1; }
+
+service PaymentService {
+  rpc CreatePayment(CreatePaymentRequest) returns (PaymentResponse);
+  rpc GetPayment(GetPaymentRequest) returns (PaymentResponse);
+  rpc GetAllPayments(Empty) returns (PaymentsResponse);
+  rpc DeletePayment(DeletePaymentRequest) returns (Empty);
+}

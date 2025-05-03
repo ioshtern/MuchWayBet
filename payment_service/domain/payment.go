@@ -3,11 +3,11 @@ package domain
 import "time"
 
 type Payment struct {
-	ID        string    `bson:"id"`
-	UserID    string    `bson:"user_id"`
-	Type      string    `bson:"type"` // "deposit", "withdrawal"
-	Amount    float64   `bson:"amount"`
-	Status    string    `bson:"status"` // "pending", "completed", "failed"
-	CreatedAt time.Time `bson:"created_at"`
-	UpdatedAt time.Time `bson:"updated_at"`
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	Type      string    `json:"type"`
+	Amount    float64   `json:"amount"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
