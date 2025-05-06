@@ -22,14 +22,14 @@ import (
 
 func main() {
 	// Initialize PostgreSQL connection directly
-	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchwaybet sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=1234 dbname=user_service sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	// Initialize RabbitMQ connection
-	rabbitConn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	rabbitConn, err := amqp.Dial("amqp://user:1234@localhost:5672/")
 	if err != nil {
 		log.Fatal("Failed to connect to RabbitMQ:", err)
 	}
@@ -47,12 +47,12 @@ func main() {
 	pb.RegisterPaymentServiceServer(server, paymentgrpc.NewPaymentServer(uc))
 	reflection.Register(server)
 
-	lis, err := net.Listen("tcp", ":50052")
+	lis, err := net.Listen("tcp", ":50054")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	log.Println("Payment gRPC service running on port 50052")
+	log.Println("Payment gRPC service running on port 50054")
 	if err := server.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

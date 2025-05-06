@@ -3,10 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/gorilla/mux"
-	_ "github.com/lib/pq"
-	"github.com/streadway/amqp"
-	grpc "google.golang.org/grpc"
 	"log"
 	"muchway/event_service/domain"
 	eventsvc "muchway/event_service/grpc"
@@ -16,11 +12,16 @@ import (
 	"muchway/event_service/usecase"
 	"net"
 	"net/http"
+
+	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
+	"github.com/streadway/amqp"
+	grpc "google.golang.org/grpc"
 )
 
 func main() {
 	// Postgres
-	db, err := sql.Open("postgres", "postgres://postgres:123654789@localhost:5432/gin?sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=1234 dbname=user_service sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,7 +29,7 @@ func main() {
 	repo := repository.NewPostgresEventRepository(db)
 
 	// RabbitMQ
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp.Dial("amqp://user:1234@localhost:5672/")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,11 +38,48 @@ func main() {
 	cons, _ := rabbitmq.NewConsumer(conn)
 
 	uc := usecase.NewEventUseCase(repo, pub)
-	go cons.Consume("events_queue", func(b []byte) {
-		log.Printf("Consumed: %s", b)
-	})
 
-	// REST
+	// go cons.Consume("events_queue", func(b []byte) {
+	// 	log.Printf("Consumed (events_queue): %s", b)
+	// })
+
+	err = cons.Consume("bet.created", func(b []byte) {
+		var bet domain.Bet
+		err := json.Unmarshal(b, &bet)
+		if err != nil {
+			log.Printf(" Failed to decode bet.created: %v", err)
+			return
+		}
+
+		log.Printf("Received bet.created event: %+v", bet)
+	})
+	if err != nil {
+		log.Fatalf(" Consumer bet.created error: %v", err)
+	}
+	err = cons.Consume("bet.updated", func(b []byte) {
+		var bet domain.Bet
+		if err := json.Unmarshal(b, &bet); err != nil {
+			log.Printf(" Failed to decode bet.updated: %v", err)
+			return
+		}
+		log.Printf(" Received bet.updated event: %+v", bet)
+	})
+	if err != nil {
+		log.Fatalf(" Consumer bet.updated error: %v", err)
+	}
+
+	err = cons.Consume("bet.deleted", func(b []byte) {
+		var bet domain.Bet
+		if err := json.Unmarshal(b, &bet); err != nil {
+			log.Printf(" Failed to decode bet.deleted: %v", err)
+			return
+		}
+		log.Printf(" Received bet.deleted event: %+v", bet)
+	})
+	if err != nil {
+		log.Fatalf(" Consumer bet.deleted error: %v", err)
+	}
+
 	r := mux.NewRouter()
 	r.HandleFunc("/events", func(w http.ResponseWriter, req *http.Request) {
 		var e domain.Event
@@ -107,12 +145,12 @@ func main() {
 	}()
 
 	// gRPC server
-	lis, err := net.Listen("tcp", ":50051")
+	lis, err := net.Listen("tcp", ":50053")
 	if err != nil {
 		log.Fatalf("grpc listen: %v", err)
 	}
 	grpcSrv := grpc.NewServer()
 	proto.RegisterEventServiceServer(grpcSrv, eventsvc.NewGRPCServer(uc))
-	log.Println("gRPC on :50051")
+	log.Println("gRPC on :50053")
 	log.Fatal(grpcSrv.Serve(lis))
 }

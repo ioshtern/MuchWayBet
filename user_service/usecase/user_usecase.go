@@ -2,11 +2,12 @@ package usecase
 
 import (
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"muchway/user_service/domain"
 	"muchway/user_service/rabbitmq"
 	"muchway/user_service/repository"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserUsecase interface {
@@ -14,6 +15,10 @@ type UserUsecase interface {
 	Login(email, password string) (*domain.User, error)
 	GetAllUsers() ([]*domain.User, error)
 	GetUserByID(id int64) (*domain.User, error)
+	GetUserByUsername(username string) (*domain.User, error)
+	GetUserByEmail(email string) (*domain.User, error)
+	UpdateUser(user *domain.User) error
+	DeleteUser(username string) error
 }
 
 type userUsecase struct {
@@ -78,4 +83,20 @@ func (u *userUsecase) GetAllUsers() ([]*domain.User, error) {
 
 func (u *userUsecase) GetUserByID(id int64) (*domain.User, error) {
 	return u.repo.GetByID(id)
+}
+
+func (u *userUsecase) GetUserByUsername(username string) (*domain.User, error) {
+	return u.repo.GetByUsername(username)
+}
+
+func (u *userUsecase) GetUserByEmail(email string) (*domain.User, error) {
+	return u.repo.GetByEmail(email)
+}
+
+func (u *userUsecase) UpdateUser(user *domain.User) error {
+	return u.repo.Update(user)
+}
+
+func (u *userUsecase) DeleteUser(username string) error {
+	return u.repo.Delete(username)
 }

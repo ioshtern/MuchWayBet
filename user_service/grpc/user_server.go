@@ -104,3 +104,67 @@ func (s *UserServer) GetAllUsers(ctx context.Context, req *userpb.GetAllUsersReq
 
 	return &userpb.GetAllUsersResponse{Users: pbUsers}, nil
 }
+
+func (s *UserServer) GetUserByUsername(ctx context.Context, req *userpb.GetUserByUsernameRequest) (*userpb.GetUserByUsernameResponse, error) {
+	user, err := s.usecase.GetUserByUsername(req.GetUsername())
+	if err != nil {
+		return nil, err
+	}
+
+	return &userpb.GetUserByUsernameResponse{
+		User: &userpb.User{
+			Id:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+			Password: user.Password,
+			Balance:  user.Balance,
+			Role:     user.Role,
+		},
+	}, nil
+}
+
+func (s *UserServer) GetUserByEmail(ctx context.Context, req *userpb.GetUserByEmailRequest) (*userpb.GetUserByEmailResponse, error) {
+	user, err := s.usecase.GetUserByEmail(req.GetEmail())
+	if err != nil {
+		return nil, err
+	}
+
+	return &userpb.GetUserByEmailResponse{
+		User: &userpb.User{
+			Id:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+			Password: user.Password,
+			Balance:  user.Balance,
+			Role:     user.Role,
+		},
+	}, nil
+}
+
+func (s *UserServer) UpdateUser(ctx context.Context, req *userpb.UpdateUserRequest) (*userpb.UpdateUserResponse, error) {
+	u := req.GetUser()
+	user := &domain.User{
+		ID:       u.Id,
+		Username: u.Username,
+		Email:    u.Email,
+		Password: u.Password,
+		Balance:  u.Balance,
+		Role:     u.Role,
+	}
+
+	err := s.usecase.UpdateUser(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userpb.UpdateUserResponse{User: u}, nil
+}
+
+func (s *UserServer) DeleteUser(ctx context.Context, req *userpb.DeleteUserRequest) (*userpb.DeleteUserResponse, error) {
+	err := s.usecase.DeleteUser(req.GetUsername())
+	if err != nil {
+		return &userpb.DeleteUserResponse{Success: false}, err
+	}
+
+	return &userpb.DeleteUserResponse{Success: true}, nil
+}

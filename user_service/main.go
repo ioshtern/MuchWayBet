@@ -2,8 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 	"log"
 	grpcServer "muchway/user_service/grpc"
 	pb "muchway/user_service/proto/userpb"
@@ -13,18 +11,21 @@ import (
 	_ "muchway/user_service/usecase"
 	"net"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchway sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=1234 dbname=user_service sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	userRepo := postgres.NewPostgresUserRepository(db)
 
-	publisher, err := rabbitmq.NewPublisher("amqp://guest:guest@localhost:5672/", "user_events")
+	publisher, err := rabbitmq.NewPublisher("amqp://user:1234@localhost:5672/", "user_events")
 	if err != nil {
 		log.Fatal("Failed to connect to RabbitMQ:", err)
 	}
@@ -33,7 +34,7 @@ func main() {
 	userUsecase := usecase.NewUserUsecase(userRepo, publisher)
 
 	go func() {
-		err := rabbitmq.StartConsumer("amqp://guest:guest@localhost:5672/", "user_events")
+		err := rabbitmq.StartConsumer("amqp://user:1234@localhost:5672/", "user_events")
 		if err != nil {
 			log.Fatalf("Failed to start RabbitMQ consumer: %v", err)
 		}

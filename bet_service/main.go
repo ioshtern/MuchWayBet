@@ -27,24 +27,22 @@ func main() {
 	if err := db.Ping(); err != nil {
 		log.Fatal("Database is not reachable:", err)
 	}
-	log.Println("✅ Connected to PostgreSQL.")
+	log.Println(" Connected to PostgreSQL.")
 
 	rabbitConn, err := amqp091.Dial("amqp://user:1234@localhost:5672/")
 	if err != nil {
 		log.Fatal("Failed to connect to RabbitMQ:", err)
 	}
 	defer rabbitConn.Close()
-	log.Println("✅ Connected to RabbitMQ.")
+	log.Println(" Connected to RabbitMQ.")
 
+	betRepo := repo.NewPostgresBetRepository(db)
 	publisher, err := rabbitmq.NewPublisher(rabbitConn)
 	if err != nil {
 		log.Fatal("Failed to create RabbitMQ publisher:", err)
 	}
-
-	betRepo := repo.NewPostgresBetRepository(db)
-	betUsecase := usecase.NewBetUsecase(betRepo)
+	betUsecase := usecase.NewBetUsecase(betRepo, publisher)
 	betServer := betgrpc.NewBetServer(betUsecase, publisher)
-
 
 	lis, err := net.Listen("tcp", ":50052")
 	if err != nil {
@@ -55,7 +53,7 @@ func main() {
 	betpb.RegisterBetServiceServer(grpcServer, betServer)
 	reflection.Register(grpcServer)
 
-	log.Println("🚀 BetService gRPC server running on port 50052")
+	log.Println(" BetService gRPC server running on port 50052")
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve gRPC server: %v", err)
