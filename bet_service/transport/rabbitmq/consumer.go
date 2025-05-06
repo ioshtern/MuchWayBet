@@ -1,55 +1,37 @@
 package rabbitmq
 
 import (
-	"bet_service/domain"
-	"context"
-	"encoding/json"
 	"log"
 
-	"github.com/streadway/amqp"
+	"github.com/rabbitmq/amqp091-go"
 )
 
-type Consumer struct {
-	channel *amqp.Channel
-	queue   string
+type Consumer interface {
+	Consume(queue string, handler func([]byte)) error
 }
 
-func NewConsumer(ch *amqp.Channel, queueName string) *Consumer {
-	return &Consumer{
-		channel: ch,
-		queue:   queueName,
+type amqpConsumer struct {
+	ch *amqp091.Channel
+}
+
+func NewConsumer(conn *amqp091.Connection) (Consumer, error) {
+	ch, err := conn.Channel()
+	if err != nil {
+		return nil, err
 	}
+	return &amqpConsumer{ch: ch}, nil
 }
 
-func (c *Consumer) Start(ctx context.Context) error {
-	msgs, err := c.channel.Consume(
-		c.queue,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
+func (c *amqpConsumer) Consume(queue string, handler func([]byte)) error {
+	msgs, err := c.ch.Consume(queue, "", true, false, false, false, nil)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case d := <-msgs:
-				var bet domain.Bet
-				err := json.Unmarshal(d.Body, &bet)
-				if err != nil {
-					log.Printf("Error decoding message: %v", err)
-					continue
-				}
-				log.Printf("Received new bet: %+v", bet)
-
-			}
+		for msg := range msgs {
+			log.Printf("📥 Received on %s: %s", queue, string(msg.Body))
+			handler(msg.Body)
 		}
 	}()
 

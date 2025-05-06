@@ -2,65 +2,56 @@ package rabbitmq
 
 import (
 	"encoding/json"
-	"github.com/rabbitmq/amqp091-go"
+	"log"
+
+	"github.com/streadway/amqp"
 )
 
 type Publisher struct {
-	conn    *amqp091.Connection
-	channel *amqp091.Channel
-	queue   amqp091.Queue
+	channel *amqp.Channel
 }
 
-func NewPublisher(amqpURL, queueName string) (*Publisher, error) {
-	conn, err := amqp091.Dial(amqpURL)
-	if err != nil {
-		return nil, err
-	}
-
+func NewPublisher(conn *amqp.Connection) (*Publisher, error) {
 	ch, err := conn.Channel()
 	if err != nil {
 		return nil, err
 	}
-
-	q, err := ch.QueueDeclare(
-		queueName,
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Publisher{
-		conn:    conn,
-		channel: ch,
-		queue:   q,
-	}, nil
+	return &Publisher{channel: ch}, nil
 }
 
-func (p *Publisher) Publish(message any) error {
-	body, err := json.Marshal(message)
+func (p *Publisher) Publish(eventName string, data interface{}) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.channel.QueueDeclare(
+		eventName,
+		true,  // durable
+		false, // auto-delete
+		false, // exclusive
+		false, // no-wait
+		nil,
+	)
 	if err != nil {
 		return err
 	}
 
 	err = p.channel.Publish(
 		"",
-		p.queue.Name,
+		eventName,
 		false,
 		false,
-		amqp091.Publishing{
+		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,
 		},
 	)
-	return err
-}
+	if err != nil {
+		log.Printf("❌ Failed to publish %s: %v", eventName, err)
+		return err
+	}
 
-func (p *Publisher) Close() {
-	p.channel.Close()
-	p.conn.Close()
+	log.Printf("📤 Published %s: %s", eventName, string(body))
+	return nil
 }

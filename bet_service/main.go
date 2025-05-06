@@ -43,6 +43,20 @@ func main() {
 	}
 	betUsecase := usecase.NewBetUsecase(betRepo, publisher)
 	betServer := betgrpc.NewBetServer(betUsecase, publisher)
+	consumer, err := rabbitmq.NewConsumer(rabbitConn)
+	if err != nil {
+		log.Fatal("Failed to create RabbitMQ consumer:", err)
+	}
+
+	// Слушаем user.created
+	_ = consumer.Consume("user.created", func(b []byte) {
+		log.Printf("👤 New user created: %s", b)
+	})
+
+	// Слушаем user.logged_in
+	_ = consumer.Consume("user.logged_in", func(b []byte) {
+		log.Printf("✅ User logged in: %s", b)
+	})
 
 	lis, err := net.Listen("tcp", ":50052")
 	if err != nil {
