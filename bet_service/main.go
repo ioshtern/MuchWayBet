@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"bet_service/muchway/bet_service/proto/betpb"
+	redisrepo "bet_service/repository"
 	repo "bet_service/repository/postgres"
 	betgrpc "bet_service/transport/grpc"
 	"bet_service/transport/rabbitmq"
@@ -36,6 +37,9 @@ func main() {
 	defer rabbitConn.Close()
 	log.Println(" Connected to RabbitMQ.")
 
+	redisrepo.InitRedisClient("localhost:6379", "", 0)
+	log.Println(" Connected to Redis.")
+
 	betRepo := repo.NewPostgresBetRepository(db)
 	publisher, err := rabbitmq.NewPublisher(rabbitConn)
 	if err != nil {
@@ -48,14 +52,12 @@ func main() {
 		log.Fatal("Failed to create RabbitMQ consumer:", err)
 	}
 
-	// Слушаем user.created
 	_ = consumer.Consume("user.created", func(b []byte) {
-		log.Printf("👤 New user created: %s", b)
+		log.Printf(" New user created: %s", b)
 	})
 
-	// Слушаем user.logged_in
 	_ = consumer.Consume("user.logged_in", func(b []byte) {
-		log.Printf("✅ User logged in: %s", b)
+		log.Printf(" User logged in: %s", b)
 	})
 
 	lis, err := net.Listen("tcp", ":50052")

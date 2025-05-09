@@ -3,6 +3,10 @@ package usecase
 import (
 	"bet_service/domain"
 	"bet_service/repository"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
 	"time"
 )
 
@@ -28,9 +32,15 @@ func (u *BetUsecase) CreateBet(bet *domain.Bet) error {
 
 func (u *BetUsecase) UpdateBet(bet *domain.Bet) error {
 	bet.UpdatedAt = time.Now()
+
 	if err := u.betRepo.Update(bet); err != nil {
 		return err
 	}
+
+	// Удаляем старый кэш
+	key := fmt.Sprintf("bet:%s", bet.ID)
+	repository.RedisClient.Del(context.Background(), key)
+
 	return u.publisher.PublishBetUpdated(bet)
 }
 
@@ -39,14 +49,44 @@ func (u *BetUsecase) DeleteBet(id string) error {
 	if err != nil {
 		return err
 	}
+
 	if err := u.betRepo.Delete(id); err != nil {
 		return err
 	}
+
+	// Удаляем кэш
+	key := fmt.Sprintf("bet:%s", id)
+	repository.RedisClient.Del(context.Background(), key)
+
 	return u.publisher.PublishBetDeleted(bet)
 }
 
 func (u *BetUsecase) GetBetByID(id string) (*domain.Bet, error) {
-	return u.betRepo.GetByID(id)
+	key := fmt.Sprintf("bet:%s", id)
+
+	// Пытаемся взять из кэша
+	val, err := repository.RedisClient.Get(context.Background(), key).Result()
+	if err == nil {
+		var cachedBet domain.Bet
+		if err := json.Unmarshal([]byte(val), &cachedBet); err == nil {
+			log.Println("Cache HIT:", key)
+			return &cachedBet, nil
+		}
+	}
+
+	log.Println("Cache MISS:", key)
+
+	// Если нет в Redis — берём из базы
+	bet, err := u.betRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Сохраняем в Redis
+	bytes, _ := json.Marshal(bet)
+	repository.RedisClient.Set(context.Background(), key, bytes, 5*time.Minute)
+
+	return bet, nil
 }
 
 func (u *BetUsecase) GetBetsByUserID(userID string) ([]*domain.Bet, error) {
