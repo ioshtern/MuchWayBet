@@ -21,28 +21,23 @@ import (
 )
 
 func main() {
-	// Initialize PostgreSQL connection directly
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=1234 dbname=user_service sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchwaybet sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	// Initialize RabbitMQ connection
-	rabbitConn, err := amqp.Dial("amqp://user:1234@localhost:5672/")
+	rabbitConn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
 		log.Fatal("Failed to connect to RabbitMQ:", err)
 	}
 	defer rabbitConn.Close()
 
-	// Setup repository and usecase
 	repo := postgres.NewPostgresPaymentRepository(db)
 	uc := usecase.NewPaymentUsecase(repo)
 
-	// Start RabbitMQ consumer
 	go rabbitmq.StartConsumer(rabbitConn, uc, "order_events")
 
-	// Start gRPC server
 	server := grpc.NewServer()
 	pb.RegisterPaymentServiceServer(server, paymentgrpc.NewPaymentServer(uc))
 	reflection.Register(server)

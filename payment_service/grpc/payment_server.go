@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-	"muchway/payment_service/domain"
+	"log"
 	pb "muchway/payment_service/pb"
 	"muchway/payment_service/usecase"
 )
@@ -17,12 +17,24 @@ func NewPaymentServer(uc *usecase.PaymentUsecase) *PaymentServer {
 }
 
 func (s *PaymentServer) CreatePayment(ctx context.Context, req *pb.CreatePaymentRequest) (*pb.PaymentResponse, error) {
-	p := &domain.Payment{UserID: req.UserId, Type: req.Type, Amount: req.Amount, Status: "pending"}
-	err := s.uc.CreatePayment(p)
+	log.Printf("Processing %s payment of %.2f for user %s", req.Type, req.Amount, req.UserId)
+
+	p, err := s.uc.ProcessPayment(req.UserId, req.Amount, req.Type)
 	if err != nil {
+		log.Printf("Payment processing failed: %v", err)
 		return nil, err
 	}
-	return &pb.PaymentResponse{Id: p.ID, UserId: p.UserID, Type: p.Type, Amount: p.Amount, Status: p.Status, CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix()}, nil
+
+	log.Printf("Payment processed successfully: ID=%s, Status=%s", p.ID, p.Status)
+	return &pb.PaymentResponse{
+		Id:        p.ID,
+		UserId:    p.UserID,
+		Type:      p.Type,
+		Amount:    p.Amount,
+		Status:    p.Status,
+		CreatedAt: p.CreatedAt.Unix(),
+		UpdatedAt: p.UpdatedAt.Unix(),
+	}, nil
 }
 
 func (s *PaymentServer) GetPayment(ctx context.Context, req *pb.GetPaymentRequest) (*pb.PaymentResponse, error) {
@@ -30,8 +42,17 @@ func (s *PaymentServer) GetPayment(ctx context.Context, req *pb.GetPaymentReques
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PaymentResponse{Id: p.ID, UserId: p.UserID, Type: p.Type, Amount: p.Amount, Status: p.Status, CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix()}, nil
+	return &pb.PaymentResponse{
+		Id:        p.ID,
+		UserId:    p.UserID,
+		Type:      p.Type,
+		Amount:    p.Amount,
+		Status:    p.Status,
+		CreatedAt: p.CreatedAt.Unix(),
+		UpdatedAt: p.UpdatedAt.Unix(),
+	}, nil
 }
+
 func (s *PaymentServer) GetAllPayments(ctx context.Context, req *pb.Empty) (*pb.PaymentsResponse, error) {
 	list, err := s.uc.GetAllPayments()
 	if err != nil {
@@ -39,7 +60,15 @@ func (s *PaymentServer) GetAllPayments(ctx context.Context, req *pb.Empty) (*pb.
 	}
 	res := &pb.PaymentsResponse{}
 	for _, p := range list {
-		res.Payments = append(res.Payments, &pb.PaymentResponse{Id: p.ID, UserId: p.UserID, Type: p.Type, Amount: p.Amount, Status: p.Status, CreatedAt: p.CreatedAt.Unix(), UpdatedAt: p.UpdatedAt.Unix()})
+		res.Payments = append(res.Payments, &pb.PaymentResponse{
+			Id:        p.ID,
+			UserId:    p.UserID,
+			Type:      p.Type,
+			Amount:    p.Amount,
+			Status:    p.Status,
+			CreatedAt: p.CreatedAt.Unix(),
+			UpdatedAt: p.UpdatedAt.Unix(),
+		})
 	}
 	return res, nil
 }

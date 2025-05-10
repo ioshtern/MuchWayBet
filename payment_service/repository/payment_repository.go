@@ -7,4 +7,6 @@ type PaymentRepository interface {
 	GetByID(id string) (*domain.Payment, error)
 	GetAll() ([]*domain.Payment, error)
 	DeleteByID(id string) error
+	UpdateUserBalance(userID string, amount float64, operation string) error
+	UpdateStatus(id string, status string) error
 }
