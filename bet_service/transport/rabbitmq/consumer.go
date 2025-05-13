@@ -30,7 +30,7 @@ func (c *amqpConsumer) Consume(queue string, handler func([]byte)) error {
 
 	go func() {
 		for msg := range msgs {
-			log.Printf("📥 Received on %s: %s", queue, string(msg.Body))
+			log.Printf("Received on %s: %s", queue, string(msg.Body))
 			handler(msg.Body)
 		}
 	}()
