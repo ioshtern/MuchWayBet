@@ -1,4 +1,3 @@
-// cmd/main.go
 package main
 
 import (
@@ -14,6 +13,7 @@ import (
 	"muchway/payment_service/pb"
 	"muchway/payment_service/rabbitmq"
 	"muchway/payment_service/repository/postgres"
+	redisRepo "muchway/payment_service/repository/redis"
 	"muchway/payment_service/usecase"
 
 	"google.golang.org/grpc"
@@ -33,7 +33,13 @@ func main() {
 	}
 	defer rabbitConn.Close()
 
-	repo := postgres.NewPostgresPaymentRepository(db)
+	redisRepo.InitRedisClient("localhost:6379", "", 0)
+	log.Println("Redis client initialized")
+
+	postgresRepo := postgres.NewPostgresPaymentRepository(db)
+
+	repo := redisRepo.NewRedisPaymentRepository(postgresRepo)
+
 	uc := usecase.NewPaymentUsecase(repo)
 
 	go rabbitmq.StartConsumer(rabbitConn, uc, "order_events")
