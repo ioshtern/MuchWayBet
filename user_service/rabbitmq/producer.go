@@ -48,10 +48,10 @@ func (p *Publisher) Publish(eventName string, data interface{}) error {
 		},
 	)
 	if err != nil {
-		log.Printf("❌ Failed to publish %s: %v", eventName, err)
+		log.Printf("Failed to publish %s: %v", eventName, err)
 		return err
 	}
 
-	log.Printf("📤 Published %s: %s", eventName, string(body))
+	log.Printf("Published %s: %s", eventName, string(body))
 	return nil
 }
