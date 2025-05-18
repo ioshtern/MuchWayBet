@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"github.com/streadway/amqp"
@@ -20,8 +22,10 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	// Postgres
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=1234 dbname=user_service sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=123654789 dbname=gin sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -29,7 +33,7 @@ func main() {
 	repo := repository.NewPostgresEventRepository(db)
 
 	// RabbitMQ
-	conn, err := amqp.Dial("amqp://user:1234@localhost:5672/")
+	conn, err := amqp.Dial("amqp://guest:guest@127.0.0.1:5672/")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,49 +41,34 @@ func main() {
 	pub, _ := rabbitmq.NewPublisher(conn)
 	cons, _ := rabbitmq.NewConsumer(conn)
 
-	uc := usecase.NewEventUseCase(repo, pub)
-
-	// go cons.Consume("events_queue", func(b []byte) {
-	// 	log.Printf("Consumed (events_queue): %s", b)
-	// })
-
-	err = cons.Consume("bet.created", func(b []byte) {
-		var bet domain.Bet
-		err := json.Unmarshal(b, &bet)
-		if err != nil {
-			log.Printf(" Failed to decode bet.created: %v", err)
-			return
-		}
-
-		log.Printf("Received bet.created event: %+v", bet)
+	// Redis
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:6379",
+		DB:   0,
 	})
-	if err != nil {
-		log.Fatalf(" Consumer bet.created error: %v", err)
-	}
-	err = cons.Consume("bet.updated", func(b []byte) {
-		var bet domain.Bet
-		if err := json.Unmarshal(b, &bet); err != nil {
-			log.Printf(" Failed to decode bet.updated: %v", err)
-			return
-		}
-		log.Printf(" Received bet.updated event: %+v", bet)
-	})
-	if err != nil {
-		log.Fatalf(" Consumer bet.updated error: %v", err)
+	defer rdb.Close()
+
+	if pong, err := rdb.Ping(ctx).Result(); err != nil {
+		log.Fatalf("Redis ping failed: %v", err)
+	} else {
+		log.Printf("Redis connected: %s", pong)
 	}
 
-	err = cons.Consume("bet.deleted", func(b []byte) {
-		var bet domain.Bet
-		if err := json.Unmarshal(b, &bet); err != nil {
-			log.Printf(" Failed to decode bet.deleted: %v", err)
-			return
-		}
-		log.Printf(" Received bet.deleted event: %+v", bet)
-	})
-	if err != nil {
-		log.Fatalf(" Consumer bet.deleted error: %v", err)
+	uc := usecase.NewEventUseCase(repo, pub, rdb)
+
+	// RabbitMQ
+	for _, q := range []string{"events_queue", "bet.created", "bet.updated", "bet.deleted"} {
+		queue := q
+		go func() {
+			if err := cons.Consume(queue, func(b []byte) {
+				log.Printf("Consumed (%s): %s", queue, string(b))
+			}); err != nil {
+				log.Printf("Consumer %s error: %v", queue, err)
+			}
+		}()
 	}
 
+	// HTTP
 	r := mux.NewRouter()
 	r.HandleFunc("/events", func(w http.ResponseWriter, req *http.Request) {
 		var e domain.Event
@@ -139,12 +128,13 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	}).Methods("DELETE")
 
+	// REST
 	go func() {
 		log.Println("REST on :8080")
 		log.Fatal(http.ListenAndServe(":8080", r))
 	}()
 
-	// gRPC server
+	// GRPC
 	lis, err := net.Listen("tcp", ":50053")
 	if err != nil {
 		log.Fatalf("grpc listen: %v", err)
