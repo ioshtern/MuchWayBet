@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net"
@@ -12,27 +13,35 @@ import (
 	"muchway/user_service/usecase"
 
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 	"github.com/streadway/amqp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 func main() {
-	// PostgreSQL подключение
-	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchwaybet sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchway sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	// RabbitMQ подключение
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
 		log.Fatal("Failed to connect to RabbitMQ:", err)
 	}
 	defer conn.Close()
 
-	// Инициализация
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+
+	if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
+		log.Fatal("Failed to connect to Redis:", err)
+	}
+
 	userRepo := postgres.NewPostgresUserRepository(db)
 
 	publisher, err := rabbitmq.NewPublisher(conn)
@@ -40,9 +49,8 @@ func main() {
 		log.Fatal("Failed to create RabbitMQ publisher:", err)
 	}
 
-	userUsecase := usecase.NewUserUsecase(userRepo, publisher)
+	userUsecase := usecase.NewUserUsecase(userRepo, publisher, redisClient)
 
-	// gRPC сервер
 	server := grpc.NewServer()
 	pb.RegisterUserServiceServer(server, grpcServer.NewUserServer(userUsecase))
 	reflection.Register(server)

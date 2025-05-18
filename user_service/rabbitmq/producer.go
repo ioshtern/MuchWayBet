@@ -27,10 +27,10 @@ func (p *Publisher) Publish(eventName string, data interface{}) error {
 
 	_, err = p.channel.QueueDeclare(
 		eventName,
-		true,  // durable
-		false, // auto-delete
-		false, // exclusive
-		false, // no-wait
+		true,
+		false,
+		false,
+		false,
 		nil,
 	)
 	if err != nil {
@@ -48,10 +48,10 @@ func (p *Publisher) Publish(eventName string, data interface{}) error {
 		},
 	)
 	if err != nil {
-		log.Printf("❌ Failed to publish %s: %v", eventName, err)
+		log.Printf("Failed to publish %s: %v", eventName, err)
 		return err
 	}
 
-	log.Printf("📤 Published %s: %s", eventName, string(body))
+	log.Printf("Published %s: %s", eventName, string(body))
 	return nil
 }

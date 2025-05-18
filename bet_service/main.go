@@ -6,7 +6,6 @@ import (
 	"net"
 
 	"bet_service/muchway/bet_service/proto/betpb"
-	redisrepo "bet_service/repository"
 	repo "bet_service/repository/postgres"
 	betgrpc "bet_service/transport/grpc"
 	"bet_service/transport/rabbitmq"
@@ -19,7 +18,7 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=1234 dbname=user_service sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchway sslmode=disable")
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -30,14 +29,14 @@ func main() {
 	}
 	log.Println(" Connected to PostgreSQL.")
 
-	rabbitConn, err := amqp091.Dial("amqp://user:1234@localhost:5672/")
+	rabbitConn, err := amqp091.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
 		log.Fatal("Failed to connect to RabbitMQ:", err)
 	}
 	defer rabbitConn.Close()
 	log.Println(" Connected to RabbitMQ.")
 
-	redisrepo.InitRedisClient("localhost:6379", "", 0)
+	//redisrepo.InitRedisClient("localhost:6379", "", 0)
 	log.Println(" Connected to Redis.")
 
 	betRepo := repo.NewPostgresBetRepository(db)

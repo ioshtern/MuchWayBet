@@ -67,7 +67,7 @@ func (s *UserServer) Login(ctx context.Context, req *userpb.LoginRequest) (*user
 }
 
 func (s *UserServer) GetUserByID(ctx context.Context, req *userpb.GetUserByIDRequest) (*userpb.GetUserByIDResponse, error) {
-	user, err := s.usecase.GetUserByID(req.GetId())
+	user, err := s.usecase.GetUserByID(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}

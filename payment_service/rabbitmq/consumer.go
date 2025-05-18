@@ -12,7 +12,7 @@ type PaymentEvent struct {
 	OrderID     string  `json:"order_id"`
 	UserID      string  `json:"user_id"`
 	Amount      float64 `json:"amount"`
-	PaymentType string  `json:"payment_type"` // "deposit" or "withdraw"
+	PaymentType string  `json:"payment_type"`
 }
 
 func StartConsumer(conn *amqp.Connection, uc *usecase.PaymentUsecase, queue string) {
