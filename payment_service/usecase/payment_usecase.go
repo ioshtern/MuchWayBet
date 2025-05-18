@@ -2,7 +2,10 @@ package usecase
 
 import (
 	"errors"
+	"log"
+	"muchway/payment_service/client"
 	"muchway/payment_service/domain"
+	"muchway/payment_service/email"
 	"muchway/payment_service/repository"
 	"time"
 
@@ -10,11 +13,17 @@ import (
 )
 
 type PaymentUsecase struct {
-	repo repository.PaymentRepository
+	repo         repository.PaymentRepository
+	userClient   *client.UserClient
+	emailService email.EmailService
 }
 
-func NewPaymentUsecase(r repository.PaymentRepository) *PaymentUsecase {
-	return &PaymentUsecase{repo: r}
+func NewPaymentUsecase(r repository.PaymentRepository, userClient *client.UserClient, emailService email.EmailService) *PaymentUsecase {
+	return &PaymentUsecase{
+		repo:         r,
+		userClient:   userClient,
+		emailService: emailService,
+	}
 }
 
 func (uc *PaymentUsecase) CreatePayment(p *domain.Payment) error {
@@ -44,7 +53,32 @@ func (uc *PaymentUsecase) CreatePayment(p *domain.Payment) error {
 	}
 
 	p.Status = "completed"
-	return uc.repo.UpdateStatus(p.ID, "completed")
+	err = uc.repo.UpdateStatus(p.ID, "completed")
+	if err != nil {
+		return err
+	}
+
+	// Send email notification
+	if uc.userClient != nil && uc.emailService != nil {
+		go func() {
+			// Get user email
+			userEmail, err := uc.userClient.GetUserEmail(p.UserID)
+			if err != nil {
+				log.Printf("Failed to get user email: %v", err)
+				return
+			}
+
+			// Send payment confirmation email
+			err = uc.emailService.SendPaymentConfirmation(userEmail, p.UserID, p.Amount, p.Type, p.Status)
+			if err != nil {
+				log.Printf("Failed to send payment confirmation email: %v", err)
+			} else {
+				log.Printf("Payment confirmation email sent to: %s", userEmail)
+			}
+		}()
+	}
+
+	return nil
 }
 
 func (uc *PaymentUsecase) GetPaymentByID(id string) (*domain.Payment, error) {

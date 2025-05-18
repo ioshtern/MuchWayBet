@@ -9,6 +9,8 @@ import (
 
 	"github.com/streadway/amqp"
 
+	"muchway/payment_service/client"
+	"muchway/payment_service/email"
 	paymentgrpc "muchway/payment_service/grpc"
 	"muchway/payment_service/pb"
 	"muchway/payment_service/rabbitmq"
@@ -21,7 +23,7 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchway sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchwaybet sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,7 +42,27 @@ func main() {
 
 	repo := redisRepo.NewRedisPaymentRepository(postgresRepo)
 
-	uc := usecase.NewPaymentUsecase(repo)
+	// Initialize user service client
+	userClient, err := client.NewUserClient("localhost:50051")
+	if err != nil {
+		log.Printf("Warning: Failed to connect to user service: %v", err)
+		userClient = nil
+	} else {
+		defer userClient.Close()
+		log.Println("Connected to user service")
+	}
+
+	// Initialize email service with Gmail credentials
+	emailConfig := email.Config{
+		SMTPHost:     "smtp.gmail.com",
+		SMTPPort:     "587",
+		SenderEmail:  "nbekzat251@gmail.com",
+		SenderPasswd: "flza vhbo uwlj oizn",
+	}
+	emailService := email.NewEmailService(emailConfig)
+	log.Println("Email service initialized")
+
+	uc := usecase.NewPaymentUsecase(repo, userClient, emailService)
 
 	go rabbitmq.StartConsumer(rabbitConn, uc, "order_events")
 

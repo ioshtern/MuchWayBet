@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"muchway/event_service/client"
 	"muchway/event_service/domain"
+	"muchway/event_service/email"
 	eventsvc "muchway/event_service/grpc"
 	"muchway/event_service/proto"
 	"muchway/event_service/rabbitmq"
@@ -54,7 +56,27 @@ func main() {
 		log.Printf("Redis connected: %s", pong)
 	}
 
-	uc := usecase.NewEventUseCase(repo, pub, rdb)
+	// Initialize user service client
+	userClient, err := client.NewUserClient("localhost:50051")
+	if err != nil {
+		log.Printf("Warning: Failed to connect to user service: %v", err)
+		userClient = nil
+	} else {
+		defer userClient.Close()
+		log.Println("Connected to user service")
+	}
+
+	// Initialize email service with Gmail credentials
+	emailConfig := email.Config{
+		SMTPHost:     "smtp.gmail.com",
+		SMTPPort:     "587",
+		SenderEmail:  "nbekzat251@gmail.com",
+		SenderPasswd: "flza vhbo uwlj oizn",
+	}
+	emailService := email.NewEmailService(emailConfig)
+	log.Println("Email service initialized")
+
+	uc := usecase.NewEventUseCase(repo, pub, rdb, userClient, emailService)
 
 	// RabbitMQ
 	for _, q := range []string{"events_queue", "bet.created", "bet.updated", "bet.deleted"} {

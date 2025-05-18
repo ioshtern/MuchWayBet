@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"muchway/user_service/domain"
+	"muchway/user_service/email"
 	"muchway/user_service/rabbitmq"
 	"muchway/user_service/repository"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,13 +28,19 @@ type UserUsecase interface {
 }
 
 type userUsecase struct {
-	repo      repository.UserRepository
-	publisher *rabbitmq.Publisher
-	redis     *redis.Client
+	repo         repository.UserRepository
+	publisher    *rabbitmq.Publisher
+	redis        *redis.Client
+	emailService email.EmailService
 }
 
-func NewUserUsecase(repo repository.UserRepository, publisher *rabbitmq.Publisher, redis *redis.Client) UserUsecase {
-	return &userUsecase{repo: repo, publisher: publisher, redis: redis}
+func NewUserUsecase(repo repository.UserRepository, publisher *rabbitmq.Publisher, redis *redis.Client, emailService email.EmailService) UserUsecase {
+	return &userUsecase{
+		repo:         repo,
+		publisher:    publisher,
+		redis:        redis,
+		emailService: emailService,
+	}
 }
 
 func (u *userUsecase) Register(user *domain.User) error {
@@ -49,6 +57,17 @@ func (u *userUsecase) Register(user *domain.User) error {
 	if u.publisher != nil {
 		if err := u.publisher.Publish("user.created", user); err != nil {
 			log.Println("Failed to publish user.created:", err)
+		}
+	}
+
+	// Send registration confirmation email
+	if u.emailService != nil {
+		if err := u.emailService.SendRegistrationConfirmation(user.Email, user.Username); err != nil {
+			log.Println("Failed to send registration confirmation email:", err)
+			// We don't return the error here to avoid failing the registration process
+			// if email sending fails
+		} else {
+			log.Println("Registration confirmation email sent to:", user.Email)
 		}
 	}
 

@@ -6,10 +6,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"muchway/event_service/client"
 	"muchway/event_service/domain"
+	"muchway/event_service/email"
 	"muchway/event_service/rabbitmq"
 	"muchway/event_service/repository"
+
+	"github.com/go-redis/redis/v8"
 )
 
 type EventUseCase interface {
@@ -21,13 +24,21 @@ type EventUseCase interface {
 }
 
 type eventUseCase struct {
-	repo      repository.EventRepository
-	publisher rabbitmq.Publisher
-	rdb       *redis.Client
+	repo         repository.EventRepository
+	publisher    rabbitmq.Publisher
+	rdb          *redis.Client
+	userClient   *client.UserClient
+	emailService email.EmailService
 }
 
-func NewEventUseCase(r repository.EventRepository, p rabbitmq.Publisher, rdb *redis.Client) EventUseCase {
-	return &eventUseCase{repo: r, publisher: p, rdb: rdb}
+func NewEventUseCase(r repository.EventRepository, p rabbitmq.Publisher, rdb *redis.Client, uc *client.UserClient, es email.EmailService) EventUseCase {
+	return &eventUseCase{
+		repo:         r,
+		publisher:    p,
+		rdb:          rdb,
+		userClient:   uc,
+		emailService: es,
+	}
 }
 
 func (uc *eventUseCase) CreateEvent(ctx context.Context, e *domain.Event) (*domain.Event, error) {
@@ -35,9 +46,39 @@ func (uc *eventUseCase) CreateEvent(ctx context.Context, e *domain.Event) (*doma
 	if err != nil {
 		return nil, err
 	}
+
+	// Publish event to message queue
 	if err := uc.publisher.Publish("events", "created", saved); err != nil {
 		log.Printf("publish error: %v", err)
 	}
+
+	// Send email notification to all users
+	if uc.userClient != nil && uc.emailService != nil {
+		go func() {
+			// Create a new context for the goroutine
+			emailCtx := context.Background()
+
+			// Get all user emails
+			emails, err := uc.userClient.GetAllUserEmails(emailCtx)
+			if err != nil {
+				log.Printf("Failed to get user emails: %v", err)
+				return
+			}
+
+			if len(emails) > 0 {
+				// Send notification to all users
+				err = uc.emailService.SendNewEventNotification(emailCtx, emails, saved)
+				if err != nil {
+					log.Printf("Failed to send event notification emails: %v", err)
+				} else {
+					log.Printf("Event notification emails sent to %d users", len(emails))
+				}
+			} else {
+				log.Println("No users to send event notification to")
+			}
+		}()
+	}
+
 	return saved, nil
 }
 

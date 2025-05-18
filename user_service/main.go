@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 
+	"muchway/user_service/email"
 	grpcServer "muchway/user_service/grpc"
 	pb "muchway/user_service/proto/userpb"
 	"muchway/user_service/rabbitmq"
@@ -20,7 +21,7 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchway sslmode=disable")
+	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchwaybet sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,7 +50,16 @@ func main() {
 		log.Fatal("Failed to create RabbitMQ publisher:", err)
 	}
 
-	userUsecase := usecase.NewUserUsecase(userRepo, publisher, redisClient)
+	// Initialize email service with Gmail credentials
+	emailConfig := email.Config{
+		SMTPHost:     "smtp.gmail.com",
+		SMTPPort:     "587",
+		SenderEmail:  "nbekzat251@gmail.com",
+		SenderPasswd: "flza vhbo uwlj oizn",
+	}
+	emailService := email.NewEmailService(emailConfig)
+
+	userUsecase := usecase.NewUserUsecase(userRepo, publisher, redisClient, emailService)
 
 	server := grpc.NewServer()
 	pb.RegisterUserServiceServer(server, grpcServer.NewUserServer(userUsecase))
