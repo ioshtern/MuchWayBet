@@ -37,7 +37,7 @@ func (u *BetUsecase) UpdateBet(bet *domain.Bet) error {
 		return err
 	}
 
-	// Удаляем старый кэш
+
 	key := fmt.Sprintf("bet:%s", bet.ID)
 	repository.RedisClient.Del(context.Background(), key)
 
@@ -54,7 +54,6 @@ func (u *BetUsecase) DeleteBet(id string) error {
 		return err
 	}
 
-	// Удаляем кэш
 	key := fmt.Sprintf("bet:%s", id)
 	repository.RedisClient.Del(context.Background(), key)
 
@@ -64,7 +63,7 @@ func (u *BetUsecase) DeleteBet(id string) error {
 func (u *BetUsecase) GetBetByID(id string) (*domain.Bet, error) {
 	key := fmt.Sprintf("bet:%s", id)
 
-	// Пытаемся взять из кэша
+
 	val, err := repository.RedisClient.Get(context.Background(), key).Result()
 	if err == nil {
 		var cachedBet domain.Bet
@@ -76,13 +75,13 @@ func (u *BetUsecase) GetBetByID(id string) (*domain.Bet, error) {
 
 	log.Println("Cache MISS:", key)
 
-	// Если нет в Redis — берём из базы
+	
 	bet, err := u.betRepo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	// Сохраняем в Redis
+
 	bytes, _ := json.Marshal(bet)
 	repository.RedisClient.Set(context.Background(), key, bytes, 5*time.Minute)
 

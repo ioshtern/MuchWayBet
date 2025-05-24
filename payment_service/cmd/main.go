@@ -23,13 +23,13 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("postgres", "host=localhost port=5433 user=postgres password=3052 dbname=muchwaybet sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://postgres:1234@localhost:5432/user_service?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	rabbitConn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	rabbitConn, err := amqp.Dial("amqp://user:1234@localhost:5672/")
 	if err != nil {
 		log.Fatal("Failed to connect to RabbitMQ:", err)
 	}
@@ -56,7 +56,7 @@ func main() {
 	emailConfig := email.Config{
 		SMTPHost:     "smtp.gmail.com",
 		SMTPPort:     "587",
-		SenderEmail:  "nbekzat251@gmail.com",
+		SenderEmail:  "ekzat251@gmail.com",
 		SenderPasswd: "flza vhbo uwlj oizn",
 	}
 	emailService := email.NewEmailService(emailConfig)

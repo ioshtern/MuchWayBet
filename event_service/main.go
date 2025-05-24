@@ -27,7 +27,7 @@ func main() {
 	ctx := context.Background()
 
 	// Postgres
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=123654789 dbname=gin sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://postgres:1234@localhost:5432/user_service?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func main() {
 	repo := repository.NewPostgresEventRepository(db)
 
 	// RabbitMQ
-	conn, err := amqp.Dial("amqp://guest:guest@127.0.0.1:5672/")
+	conn, err := amqp.Dial("amqp://user:1234@localhost:5672/")
 	if err != nil {
 		log.Fatal(err)
 	}
